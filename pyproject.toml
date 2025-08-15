@@ -1,0 +1,12 @@
+[project]
+name = "esgf-stac-tests"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = ["pystac-client>=0.9.0", "pytest>=8.4.1"]
+
+[tool.pytest.ini_options]
+console_output_style = "count"
+addopts = "--verbose --disable-warnings --no-summary"
+testpaths = ["./"]
