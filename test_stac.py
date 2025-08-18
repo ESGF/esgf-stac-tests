@@ -91,3 +91,33 @@ def test_asset_extra_fields(endpoint_url: str) -> None:
     asset = next(iter([a for key, a in item.assets.items() if key != "reference_file"]))
     assert "file:size" in asset.extra_fields
     assert "file:checksum" in asset.extra_fields
+
+
+@pytest.mark.parametrize("endpoint_url", STAC_ENDPOINTS)
+def test_paging(endpoint_url: str) -> None:
+    """
+    Ensure correct number of pages when iterating.
+    """
+    client = pystac_client.Client.open(f"https://{endpoint_url}")
+    expected_pages = None
+    num_pages = 0
+    for page in client.search(
+        collections="CMIP6",
+        filter={
+            "op": "in",
+            "args": [
+                {"property": "properties.cmip6:variable_id"},
+                ["rsus", "rsds"],
+            ],
+        },
+    ).pages():
+        num_pages += 1
+        expected_pages = (
+            (
+                int(page.extra_fields["numMatched"] / page.extra_fields["numReturned"])
+                + 1
+            )
+            if expected_pages is None
+            else expected_pages
+        )
+    assert num_pages == expected_pages
