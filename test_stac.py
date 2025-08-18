@@ -6,7 +6,7 @@ import pytest
 # We can define the endpoints we wish to test here...
 STAC_ENDPOINTS = [
     "api.stac.esgf.ceda.ac.uk",
-    "api.stac.esgf-west.org",
+    "data-challenge-04-discovery.api.stac.esgf-west.org",
 ]
 
 # ...and cql filters along with the number of items each should return.
