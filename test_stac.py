@@ -88,7 +88,7 @@ def test_asset_extra_fields(endpoint_url: str) -> None:
     )
     item = next(iter(page))
     # Any asset just not the Kerchunk reference file
-    asset = next(iter([a for key, a in item.assets.items() if key != "reference_file"]))
+    asset = next(iter([a for key, a in item.assets.items() if "reference" not in key]))
     assert "file:size" in asset.extra_fields
     assert "file:checksum" in asset.extra_fields
 
