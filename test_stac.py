@@ -50,6 +50,20 @@ FILTERS_WITH_COUNTS = [
         },
         2,
     ),  # ---------------------------------------------------
+    (
+        {
+            "args": [{"property": "properties.cmip6:member_id"}, "r2i1p1f1"],
+            "op": "=",
+        },
+        19,
+    ),  # ---------------------------------------------------
+    (
+        {
+            "args": [{"property": "properties.cmip6:variant_label"}, "r2i1p1f1"],
+            "op": "=",
+        },
+        22,
+    ),  # ---------------------------------------------------
 ]
 
 
@@ -61,8 +75,10 @@ def test_filters(endpoint_url: str, filter: dict[str, Any], num_items: int) -> N
     Perform a basic search with the specified filter and verify number of records.
     """
     client = pystac_client.Client.open(f"https://{endpoint_url}")
-    page = next(iter(client.search(collections="CMIP6", filter=filter).pages()))
-    assert page.extra_fields["numMatched"] == num_items
+    page = next(
+        iter(client.search(collections="CMIP6", filter=filter).pages_as_dicts())
+    )
+    assert page["numMatched"] == num_items
 
 
 @pytest.mark.parametrize("endpoint_url", STAC_ENDPOINTS)
