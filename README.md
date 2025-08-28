@@ -1,6 +1,8 @@
 # esgf-stac-tests
 
-End-to-end testing of the ESGF STAC infrastructure. [![Continuous Integration][ci-badge]][ci-link]
+End-to-end testing of the ESGF STAC infrastructure. 
+
+[![Continuous Integration][ci-badge]][ci-link]
 
 If you are using [`uv`](https://docs.astral.sh/uv/getting-started/installation/) you can clone this repository and issue:
 
