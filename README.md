@@ -11,6 +11,6 @@ uv run pytest
 The CI will run at midnight each day, but can also be triggered manually in "Actions".
 
 
-[ci-badge]: https://github.com/ESGF/esgf-stac-tests/actions/workflows/ci.yml/badge.svg?branch=main
-[ci-link]: https://github.com/ESGF/esgf-stac-tests/actions/workflows/ci.yml
+[ci-badge]: https://github.com/nocollier/esgf-stac-tests/actions/workflows/ci.yml/badge.svg?branch=main
+[ci-link]: https://github.com/nocollier/esgf-stac-tests/actions/workflows/ci.yml
 
