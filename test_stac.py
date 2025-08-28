@@ -50,6 +50,20 @@ FILTERS_WITH_COUNTS = [
         },
         2,
     ),  # ---------------------------------------------------
+    (
+        {
+            "args": [{"property": "properties.cmip6:member_id"}, "r2i1p1f1"],
+            "op": "=",
+        },
+        19,
+    ),  # ---------------------------------------------------
+    (
+        {
+            "args": [{"property": "properties.cmip6:variant_label"}, "r2i1p1f1"],
+            "op": "=",
+        },
+        22,
+    ),  # ---------------------------------------------------
 ]
 
 
@@ -61,8 +75,10 @@ def test_filters(endpoint_url: str, filter: dict[str, Any], num_items: int) -> N
     Perform a basic search with the specified filter and verify number of records.
     """
     client = pystac_client.Client.open(f"https://{endpoint_url}")
-    page = next(iter(client.search(collections="CMIP6", filter=filter).pages()))
-    assert page.extra_fields["numMatched"] == num_items
+    page = next(
+        iter(client.search(collections="CMIP6", filter=filter).pages_as_dicts())
+    )
+    assert page["numMatched"] == num_items
 
 
 @pytest.mark.parametrize("endpoint_url", STAC_ENDPOINTS)
@@ -121,3 +137,23 @@ def test_paging(endpoint_url: str) -> None:
             else expected_pages
         )
     assert num_pages == expected_pages
+
+
+@pytest.mark.parametrize("endpoint_url", STAC_ENDPOINTS)
+def test_which_cmip6_extension(endpoint_url: str) -> None:
+    """
+    Check that the endpoint is using the correct STAC CMIP6 extension.
+
+    Note
+    ----
+    This is more to help us understand when differences in test results could be
+    because an endpoint is pointing to a different extension.
+    """
+    client = pystac_client.Client.open(f"https://{endpoint_url}")
+    response = client.search(collections="CMIP6", max_items=1)
+    item = response.item_collection_as_dict()["features"][0]
+    cmip6_extension = [url for url in item["stac_extensions"] if "cmip6" in url]
+    if not cmip6_extension:
+        raise ValueError("No CMIP6 STAC extension found.")
+    if not (cmip6_extension[0]).startswith("https://stac-extensions.github.io/cmip6/"):
+        raise ValueError(f"Not using the standard CMIP6 extension: {cmip6_extension}")
