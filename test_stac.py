@@ -137,3 +137,23 @@ def test_paging(endpoint_url: str) -> None:
             else expected_pages
         )
     assert num_pages == expected_pages
+
+
+@pytest.mark.parametrize("endpoint_url", STAC_ENDPOINTS)
+def test_which_cmip6_extension(endpoint_url: str) -> None:
+    """
+    Check that the endpoint is using the correct STAC CMIP6 extension.
+
+    Note
+    ----
+    This is more to help us understand when differences in test results could be
+    because an endpoint is pointing to a different extension.
+    """
+    client = pystac_client.Client.open(f"https://{endpoint_url}")
+    response = client.search(collections="CMIP6", max_items=1)
+    item = response.item_collection_as_dict()["features"][0]
+    cmip6_extension = [url for url in item["stac_extensions"] if "cmip6" in url]
+    if not cmip6_extension:
+        raise ValueError("No CMIP6 STAC extension found.")
+    if not (cmip6_extension[0]).startswith("https://stac-extensions.github.io/cmip6/"):
+        raise ValueError(f"Not using the standard CMIP6 extension: {cmip6_extension}")
