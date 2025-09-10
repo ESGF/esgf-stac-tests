@@ -214,11 +214,11 @@ def test_cmip6_temporal_query(
     time_start, time_end = time_range
     args = dict(
         datetime=f"{time_start}/{time_end}",
-        query=time_range,
+        query=[f"start_datetime>{time_start}", f"end_datetime<{time_end}"],
         filter={
             "op": "t_intersects",
             "args": [
-                {"property": "properties.start_datetime"},
+                {"property": "start_datetime"},
                 f"{time_start}/{time_end}",
             ],
         },
@@ -226,7 +226,7 @@ def test_cmip6_temporal_query(
     client = pystac_client.Client.open(f"https://{endpoint_url}")
     item_search = client.search(
         collections=["CMIP6"],
-        max_items=10,
+        max_items=1,
         **{time_filter_method: args[time_filter_method]},
     )
     next(iter(item_search.items()))
