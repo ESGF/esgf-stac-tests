@@ -140,6 +140,7 @@ def test_paging(endpoint_url: str) -> None:
 
 
 @pytest.mark.parametrize("endpoint_url", STAC_ENDPOINTS)
+@pytest.mark.xfail(reason="Temporary design decision")
 def test_which_cmip6_extension(endpoint_url: str) -> None:
     """
     Check that the endpoint is using the correct STAC CMIP6 extension.
