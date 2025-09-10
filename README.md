@@ -17,3 +17,5 @@ If you are using [`uv`](https://docs.astral.sh/uv/getting-started/installation/)
 uv run pytest
 ```
 
+[ci-badge]: https://github.com/nocollier/esgf-stac-tests/actions/workflows/ci.yml/badge.svg?branch=main
+[ci-link]: https://github.com/nocollier/esgf-stac-tests/actions/workflows/ci.yml
