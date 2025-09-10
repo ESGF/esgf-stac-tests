@@ -3,6 +3,7 @@ from typing import Any
 import pystac
 import pystac_client
 import pytest
+import requests
 
 # We can define the endpoints we wish to test here...
 STAC_ENDPOINTS = [
@@ -245,3 +246,39 @@ def test_item_content(endpoint_url: str) -> None:
     assert len(nc_assets) > 0
     nc_file_url = nc_assets[0]
     assert nc_file_url
+
+
+@pytest.mark.parametrize("endpoint_url", STAC_ENDPOINTS)
+def test_facet_counts(endpoint_url: str) -> None:
+    """
+    Can we get facet counts?
+
+    Note
+    ----
+    I don't think that pystac does aggregations so we will use search and then
+    hack the url. This tests is a placeholder and needs improved as the
+    capability grows.
+    """
+    client = pystac_client.Client.open(f"https://{endpoint_url}")
+    results = client.search(
+        collections=["CMIP6"],
+        filter={
+            "args": [{"property": "properties.cmip6:activity_id"}, "VolMIP"],
+            "op": "=",
+        },
+    )
+    url = results.url_with_parameters()
+    url = url.replace(
+        "search?",
+        "aggregate?aggregations=cmip6_source_id_frequency,cmip6_table_id_frequency&",
+    )
+    response = requests.get(url)
+    response.raise_for_status()
+    content = response.json()
+    out = {
+        agg["name"]: [b["key"] for b in agg["buckets"]]
+        for agg in content["aggregations"]
+    }
+
+    assert len(out["cmip6_source_id_frequency"]) == 5
+    assert len(out["cmip6_table_id_frequency"]) == 13
