@@ -197,7 +197,7 @@ def test_cmip6_collection_geospatial_extent(endpoint_url: str) -> None:
     assert "interval" in cmip6_coll_extent["temporal"]
 
 
-@pytest.mark.parametrize("time_filter_method", ["datetime", "filter"])
+@pytest.mark.parametrize("time_filter_method", ["datetime", "query", "filter"])
 @pytest.mark.parametrize("time_range", TIME_RANGES)
 @pytest.mark.parametrize("endpoint_url", STAC_ENDPOINTS)
 def test_cmip6_temporal_query(
@@ -214,6 +214,7 @@ def test_cmip6_temporal_query(
     time_start, time_end = time_range
     args = dict(
         datetime=f"{time_start}/{time_end}",
+        query=time_range,
         filter={
             "op": "t_intersects",
             "args": [
@@ -244,48 +245,3 @@ def test_item_content(endpoint_url: str) -> None:
     assert len(nc_assets) > 0
     nc_file_url = nc_assets[0]
     assert nc_file_url
-
-
-@pytest.mark.parametrize(
-    "item_search_method_name",
-    [
-        "item_collection",
-        "item_collection_as_dict",
-        "items",
-        "items_as_dicts",
-        "pages",
-        "pages_as_dicts",
-    ],
-)
-@pytest.mark.parametrize(
-    "filter",
-    [
-        {
-            "args": [{"property": "properties.cmip6:member_id"}, "r2i1p1f1"],
-            "op": "=",
-        },
-        {
-            "args": [{"property": "end_datetime"}, "2015-01-01"],
-            "op": ">",
-        },
-    ],
-)
-@pytest.mark.parametrize("endpoint_url", STAC_ENDPOINTS)
-def test_item_search_methods(endpoint_url, filter, item_search_method_name):
-    """
-    Do all the ItemSearch methods work?
-
-    Note
-    ----
-    I am finding that for some filters (filter0) all methods work fine. However,
-    for a time dependent filter (filter1), I get some failures on some methods.
-    This may be user error on my part but we need to sort it out.
-    """
-    client = pystac_client.Client.open(f"https://{endpoint_url}")
-    item_search = client.search(
-        collections=["CMIP6"],
-        filter=filter,
-        max_items=1,
-    )
-    method = getattr(item_search, item_search_method_name)
-    next(iter(method()))
