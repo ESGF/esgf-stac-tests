@@ -1,5 +1,6 @@
 from typing import Any
 
+import pystac
 import pystac_client
 import pytest
 
@@ -65,6 +66,12 @@ FILTERS_WITH_COUNTS = [
         22,
     ),  # ---------------------------------------------------
 ]
+
+# Which collections do we expect the API to find?
+SUPPORTED_COLLECTIONS = ["CMIP6"]
+
+# Which time ranges do we check?
+TIME_RANGES = [("1850-01-01", "2020-01-01")]
 
 
 # Using that information we parameterize a test over all combinations.
@@ -139,8 +146,8 @@ def test_paging(endpoint_url: str) -> None:
     assert num_pages == expected_pages
 
 
-@pytest.mark.parametrize("endpoint_url", STAC_ENDPOINTS)
 @pytest.mark.xfail(reason="Temporary design decision")
+@pytest.mark.parametrize("endpoint_url", STAC_ENDPOINTS)
 def test_which_cmip6_extension(endpoint_url: str) -> None:
     """
     Check that the endpoint is using the correct STAC CMIP6 extension.
@@ -158,3 +165,127 @@ def test_which_cmip6_extension(endpoint_url: str) -> None:
         raise ValueError("No CMIP6 STAC extension found.")
     if not (cmip6_extension[0]).startswith("https://stac-extensions.github.io/cmip6/"):
         raise ValueError(f"Not using the standard CMIP6 extension: {cmip6_extension}")
+
+
+@pytest.mark.parametrize("endpoint_url", STAC_ENDPOINTS)
+def test_collections(endpoint_url: str) -> None:
+    """
+    Check for expected collections.
+    """
+    client = pystac_client.Client.open(f"https://{endpoint_url}")
+
+    assert set(SUPPORTED_COLLECTIONS).issubset(
+        [coll.id for coll in client.get_collections()]
+    )
+
+
+@pytest.mark.parametrize("endpoint_url", STAC_ENDPOINTS)
+def test_cmip6_collection_geospatial_extent(endpoint_url: str) -> None:
+    """
+    Check for expected collections and print their descriptions.
+    """
+    client = pystac_client.Client.open(f"https://{endpoint_url}")
+
+    cmip6_coll = client.get_collection("CMIP6")
+
+    cmip6_coll_extent = cmip6_coll.extent.to_dict()
+
+    assert cmip6_coll_extent
+    assert "spatial" in cmip6_coll_extent
+    assert "temporal" in cmip6_coll_extent
+    assert "bbox" in cmip6_coll_extent["spatial"]
+    assert "interval" in cmip6_coll_extent["temporal"]
+
+
+@pytest.mark.parametrize("time_filter_method", ["datetime", "filter"])
+@pytest.mark.parametrize("time_range", TIME_RANGES)
+@pytest.mark.parametrize("endpoint_url", STAC_ENDPOINTS)
+def test_cmip6_temporal_query(
+    endpoint_url: str, time_range: tuple[str, str], time_filter_method: str
+) -> None:
+    """
+    Can we filter out records by a time filter of any sort?
+
+    Note
+    ----
+    I cannot seem to make this work for either endpoint. It may be a problem
+    with publishing?
+    """
+    time_start, time_end = time_range
+    args = dict(
+        datetime=f"{time_start}/{time_end}",
+        filter={
+            "op": "t_intersects",
+            "args": [
+                {"property": "properties.start_datetime"},
+                f"{time_start}/{time_end}",
+            ],
+        },
+    )
+    client = pystac_client.Client.open(f"https://{endpoint_url}")
+    item_search = client.search(
+        collections=["CMIP6"],
+        max_items=10,
+        **{time_filter_method: args[time_filter_method]},
+    )
+    next(iter(item_search.items()))
+
+
+@pytest.mark.parametrize("endpoint_url", STAC_ENDPOINTS)
+def test_item_content(endpoint_url: str) -> None:
+    """
+    Check that we can harvest an asset url.
+    """
+    client = pystac_client.Client.open(f"https://{endpoint_url}")
+    item_search = client.search(collections=["CMIP6"], max_items=1)
+    item = next(iter(item_search.items()))
+    assert isinstance(item, pystac.item.Item)
+    nc_assets = [v.href for _, v in item.assets.items() if v.href.endswith(".nc")]
+    assert len(nc_assets) > 0
+    nc_file_url = nc_assets[0]
+    assert nc_file_url
+
+
+@pytest.mark.parametrize(
+    "item_search_method_name",
+    [
+        "item_collection",
+        "item_collection_as_dict",
+        "items",
+        "items_as_dicts",
+        "pages",
+        "pages_as_dicts",
+    ],
+)
+@pytest.mark.parametrize(
+    "filter",
+    [
+        {
+            "args": [{"property": "properties.cmip6:member_id"}, "r2i1p1f1"],
+            "op": "=",
+        },
+        {
+            "args": [{"property": "end_datetime"}, "2015-01-01"],
+            "op": ">",
+        },
+    ],
+)
+@pytest.mark.parametrize("endpoint_url", STAC_ENDPOINTS)
+def test_item_search_methods(endpoint_url, filter, item_search_method_name):
+    """
+    Do all the ItemSearch methods work?
+
+    Note
+    ----
+    I am finding that for some filters (filter0) all methods work fine. However,
+    for a time dependent filter (filter1), I get some failures on some methods.
+    This may be user error on my part but we need to sort it out.
+    """
+    client = pystac_client.Client.open(f"https://{endpoint_url}")
+    item_search = client.search(
+        collections=["CMIP6"],
+        filter=filter,
+        max_items=1,
+    )
+    method = getattr(item_search, item_search_method_name)
+    next(iter(method()))
