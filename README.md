@@ -7,6 +7,9 @@ End-to-end testing of the ESGF STAC infrastructure. This repository of tests is 
 
 [![Continuous Integration][ci-badge]][ci-link]
 
+[ci-badge]: https://github.com/nocollier/esgf-stac-tests/actions/workflows/ci.yml/badge.svg?branch=main
+[ci-link]: https://github.com/nocollier/esgf-stac-tests/actions/workflows/ci.yml
+
 ## Running the tests
 
 ### Ad-hoc
@@ -31,29 +34,19 @@ The CI will run at midnight each day, but can also be triggered manually in "Act
    ```shell
    $ uv add --dev git+https://github.com/nocollier/esgf-stac-tests.git
    ```
-1. Inherit your test class from `TestStacEndpoints`:
-    #### mypkg/tests/test_my_endpoint.py
-    ```python
-    import pytest
-    from unittest.mock import patch
-    from esgf_stac_tests.tests.test_stac import TestStacEndpoints
+1. Include the tests in your test paths, either:
+   - on the command line:
+   ```shell
+   $ pytest --pyargs esgf_stac_tests.tests
+   ```
+   - or in your `pyproject.toml`:
+   ```toml
+   [tool.pytest.ini_options]
+    addopts = [
+        "--pyargs=esgf_stac_tests.tests",
+    ]
+   ```
 
-
-    class TestMyEndpoint(TestStacEndpoints):
-
-        # Define a new test. It will be ran once for every
-        # configured STAC endpoint
-        def test_extra_tests_ran(endpoint_url: str):
-            assert endpoint_url is not None
-
-        # Override an existing test
-        def test_validate_catalog(self, endpoint_url: str) -> None:
-            with patch("my_module.that.breaks.the_test"):
-                super().test_validate_catalog(self, endpoint_url)
-
-        # All of the other existing tests will be ran as well
-
-    ```
 ## Specifying endpoints to test
 By default, the tests will be ran against the endpoints defined in [conftest.py](src/esgf_stac_tests/tests/conftest.py):
 1. https://api.stac.esgf.ceda.ac.uk
@@ -80,6 +73,18 @@ stac_endpoints = [
     "https://stac.yourdomain.com"
 ]
 ```
+## Specifying a Data Challenge
+Some tests are only relevant to a particular Data Challenge or have specific desired reults that don't apply outside that Data Challenge. The desired Data Challenge can be specified with `--data-challenge=N` where `N` is the Data Challenge number.
 
-[ci-badge]: https://github.com/nocollier/esgf-stac-tests/actions/workflows/ci.yml/badge.svg?branch=main
-[ci-link]: https://github.com/nocollier/esgf-stac-tests/actions/workflows/ci.yml
+# Contributing
+## Custom Markers
+The following custom markers are defined:
+- `@data_challenge(id)`: Tests marked with this will only run when the Data Challenge `id` is specified
+- `@data_challenge_xfail(id)`: These tests are expected to fail during the given Data Challenge
+- `@needed_for(client)`: Marks the test as testing functionality required by the given client
+## Data Challenge Specific overrides
+If a Data Challenge scenario requires different fixtures from the default, they can be defined in `fixtures/data_challenge_N/conftest.py` and they will be imported and take precedence over the default fixtures with the same name (those defined in [fixtures/default/conftest.py](src/esgf_stac_tests/fixtures/default/conftest.py))
+
+For example, [test_searching_with_filters](tests/test_stac.py?#L10) tests searching endpoints with various filters. In the base case, the number of returned results will depend on what data is in the endpoint's associated index, so we use a [fixture that compares positively to any non-zero int](src/esgf_stac_tests/fixtures/default/conftest.py?#78-82).
+
+In Data Challenge 4 however, we know the documents in the index so we can be more specific about the desired results. The `expected_result_count` fixture is redefined in the [Data Challenge specific fixtures](src/esgf_stac_tests/fixtures/data_challenge_4/conftest.py?#L4=16) so that it takes precedence over the default `expected_result_count` fixture when the `--data-challenge` flag is set to `4`. The logic for this lives in [src/esgf_stac_tests/tests/conftest.py](src/esgf_stac_tests/tests/conftest.py?#52-57)

@@ -14,12 +14,10 @@ dependencies = [
 [tool.pytest.ini_options]
 console_output_style = "count"
 addopts = "--verbose"
+testpaths = "src/esgf_stac_tests/tests"
 
 [project.scripts]
 esgf-stac-tests = "esgf_stac_tests.__main__:main"
-
-[tool.setuptools.package-data]
-esgf-stac-tests = ['tests/*', 'tests/**/*']
 
 [tool.ruff]
 target-version = "py313"
