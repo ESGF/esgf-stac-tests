@@ -2,8 +2,6 @@
 Pytest configuration file for testing STAC endpoints.
 
 This file defines pytest fixtures and hooks to support testing against multiple STAC endpoints.
-It provides a command-line option `--stac-endpoints` to specify a comma-separated list of endpoints to test against.
-Tests can be parameterized by STAC endpoints using the `PerEndpointSuite` class.
 """
 
 import pytest
@@ -15,12 +13,9 @@ DEFAULT_STAC_ENDPOINTS: list[str] = [
 
 
 def pytest_addoption(parser: pytest.Parser) -> None:
-    """
-    Pytest hook to add the `--stac-endpoints` command-line option.
-
-    This option allows users to specify a comma-separated list of STAC endpoints to test against.
-    """
+    """Pytest hook to add custom ini and command-line options."""
     group: pytest.OptionGroup = parser.getgroup("esgf", "ESGF STAC Tests Options")
+    parser.addini("stac_endpoints", type="args", help="STAC endpoint URLs to test against.")
 
     group.addoption(
         "--stac-endpoints",
@@ -30,21 +25,52 @@ def pytest_addoption(parser: pytest.Parser) -> None:
         help="Comma-separated list of STAC endpoints to test against.",
     )
 
-    parser.addini("stac_endpoints", type="args", help="STAC endpoint URLs to test against.")
+    group.addoption(
+        "--data-challenge",
+        action="store",
+        default=0,
+        type=int,
+        help="Run tests with expectations for a specific Data Challenge (0-4).",
+    )
 
 
-class PerEndpointSuite:
-    """These tests are parameterized by STAC_ENDPOINTS in addition to their individual parameters."""
+def pytest_configure(config: pytest.Config) -> None:
+    """Register custom markers and import Data Challenge specific plugins."""
+    config.addinivalue_line("markers", "data_challenge(id): mark test as specific to a particular Data Challenge.")
+    config.addinivalue_line("markers", "data_challenge_xfail(id): mark test as expected to fail for a particular Data Challenge.")
+    config.addinivalue_line(
+        "markers",
+        "needed_for(client): mark test as validating functionality needed for a specific client (metagrid, esmvaltool, etc).",
+    )
+
+    config.pluginmanager.import_plugin("esgf_stac_tests.fixtures.default.conftest")
+
+    data_challenge = config.getoption("--data-challenge")
+    if data_challenge > 0:
+        # Load fixtures from the `fixtures/data_challenge_X/conftest.py` if a non-zero data challenge is specified
+        config.pluginmanager.import_plugin(f"esgf_stac_tests.fixtures.data_challenge_{data_challenge}.conftest")
+
+
+@pytest.fixture(autouse=True)
+def _(request: pytest.FixtureRequest) -> None:
+    """XFail any test with the `data_challenge_xfail` marker, but only if that Data Challenge is activated."""
+    xfail_marker = request.node.get_closest_marker("data_challenge_xfail")
+    if xfail_marker is None:
+        return
+
+    if request.config.getoption("--data-challenge") == xfail_marker.args[0]:
+        pytest.xfail(reason=xfail_marker.kwargs["reason"])
+
+
+def pytest_report_header(config: pytest.Config) -> list[str] | None:
+    """Add an indicator to the top of runs when a Data Challenge scenario is activated."""
+    data_challenge = config.getoption("--data-challenge")
+    if data_challenge > 0:
+        return [f"Running tests with expectations for Data Challenge {data_challenge}"]
+    return None
 
 
 def pytest_generate_tests(metafunc: pytest.Metafunc) -> None:
-    """
-    Pytest hook to parameterize tests for classes inheriting from PerEndpointSuite.
-
-    This function checks if the test class is a subclass of PerEndpointSuite and
-    parameterizes the test with the endpoint URLs provided through the
-    `--stac-endpoints` command-line or ini options.
-    """
-    if metafunc.cls and issubclass(metafunc.cls, PerEndpointSuite):
-        endpoint_urls = metafunc.config.getoption("--stac-endpoints")
-        metafunc.parametrize("endpoint_url", endpoint_urls)
+    """Pytest hook to parameterize tests over the selected STAC endpoints."""
+    if "endpoint_url" in metafunc.fixturenames:
+        metafunc.parametrize("endpoint_url", metafunc.config.getoption("--stac-endpoints"))

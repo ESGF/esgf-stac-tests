@@ -17,7 +17,7 @@ import pytest
 
 def main() -> None:
     """Run the tests in this package. Inject the --pyargs option to limit test discovery to this package."""
-    sys.argv = [sys.argv[0], "--pyargs", __package__, *sys.argv[1:]]
+    sys.argv = [sys.argv[0], "--pyargs", f"{__package__}.tests", *sys.argv[1:]]
     raise SystemExit(pytest.console_main())
 
 
