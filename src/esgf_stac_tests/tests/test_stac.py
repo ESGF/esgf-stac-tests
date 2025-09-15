@@ -85,3 +85,63 @@ def test_endpoint_uses_published_cmip6_extension(endpoint_url: str) -> None:
 
     # Assertion on dicts will give a diff if they are not the same so we can see what changes were needed
     assert cmip6_schema == published_schema
+
+
+def test_collections(endpoint_url: str, supported_collections: list[str]) -> None:
+    """Check for expected collections."""
+    client = pystac_client.Client.open(endpoint_url)
+    assert set(supported_collections).issubset(
+        [coll.id for coll in client.get_collections()],
+    )
+
+
+def test_facet_counts(endpoint_url: str) -> None:
+    """Can we get facet counts.
+
+    Note
+    ----
+    I don't think that pystac does aggregations so we will use search and then
+    hack the url. This tests is a placeholder and needs improved as the
+    capability grows.
+    """
+    client = pystac_client.Client.open(endpoint_url)
+    results = client.search(
+        collections=["CMIP6"],
+        filter={
+            "args": [{"property": "properties.cmip6:activity_id"}, "VolMIP"],
+            "op": "=",
+        },
+    )
+    url = results.url_with_parameters()
+    url = url.replace(
+        "search?",
+        "aggregate?aggregations=cmip6_source_id_frequency,cmip6_table_id_frequency&",
+    )
+    response = requests.get(url)
+    response.raise_for_status()
+    content = response.json()
+    out = {agg["name"]: [b["key"] for b in agg["buckets"]] for agg in content["aggregations"]}
+    assert "cmip6_source_id_frequency" in out
+    assert "cmip6_table_id_frequency" in out
+    assert len(out["cmip6_source_id_frequency"]) > 0
+    assert len(out["cmip6_table_id_frequency"]) > 0
+
+
+def test_cmip6_collection_geospatial_extent(endpoint_url: str) -> None:
+    """Check for expected collections and print their descriptions.
+
+    Note
+    ----
+    Test from Phil, it may be that this is handled in STAC's validate_all().
+    """
+    client = pystac_client.Client.open(endpoint_url)
+
+    cmip6_coll = client.get_collection("CMIP6")
+
+    cmip6_coll_extent = cmip6_coll.extent.to_dict()
+
+    assert cmip6_coll_extent
+    assert "spatial" in cmip6_coll_extent
+    assert "temporal" in cmip6_coll_extent
+    assert "bbox" in cmip6_coll_extent["spatial"]
+    assert "interval" in cmip6_coll_extent["temporal"]
