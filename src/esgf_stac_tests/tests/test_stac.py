@@ -145,3 +145,49 @@ def test_cmip6_collection_geospatial_extent(endpoint_url: str) -> None:
     assert "temporal" in cmip6_coll_extent
     assert "bbox" in cmip6_coll_extent["spatial"]
     assert "interval" in cmip6_coll_extent["temporal"]
+
+
+def test_cmip6_temporal_by_datetime(endpoint_url: str) -> None:
+    """Can we get results using the datetime keyword.
+
+    Note
+    ----
+    According to
+    https://pystac-client.readthedocs.io/en/latest/api.html#item-search this
+    should work.
+    """
+    client = pystac_client.Client.open(endpoint_url)
+    item_search = client.search(
+        collections=["CMIP6"],
+        datetime="1850-01-01/2015-01-01",
+        max_items=1,
+    )
+    item = next(item_search.items())
+    assert item
+
+
+def test_cmip6_temporal_by_query(endpoint_url: str) -> None:
+    """Can we get results using a query (not recommended)."""
+    client = pystac_client.Client.open(endpoint_url)
+    item_search = client.search(
+        collections=["CMIP6"],
+        query=["start_datetime>=1850-01-01", "end_datetime<=2015-01-01"],
+        max_items=1,
+    )
+    item = next(item_search.items())
+    assert item
+
+
+def test_cmip6_temporal_by_filter(endpoint_url: str) -> None:
+    """Can we filter results using t_intersects."""
+    client = pystac_client.Client.open(endpoint_url)
+    item_search = client.search(
+        collections=["CMIP6"],
+        filter={
+            "op": "t_intersects",
+            "args": [{"property": "datetime"}, "1850-01-01/2015-01-01"],
+        },
+        max_items=1,
+    )
+    item = next(item_search.items())
+    assert item
