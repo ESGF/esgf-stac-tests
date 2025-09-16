@@ -49,11 +49,13 @@ def test_pagination(endpoint_url: str) -> None:
     assert actual_pages == expected_pages
 
 
+@pytest.mark.xfail(reason="CMIP6 STAC extension used is not public")
 def test_validate_catalog(endpoint_url: str) -> None:
     """Validate the STAC catalog for the endpoint against the STAC spec."""
     pystac_client.Client.open(endpoint_url).validate_all()
 
 
+@pytest.mark.xfail(reason="Temporary design decision")
 @pytest.mark.data_challenge_xfail(4, reason="Temporary design decision")
 def test_endpoint_uses_published_cmip6_extension(endpoint_url: str) -> None:
     """
@@ -83,3 +85,109 @@ def test_endpoint_uses_published_cmip6_extension(endpoint_url: str) -> None:
 
     # Assertion on dicts will give a diff if they are not the same so we can see what changes were needed
     assert cmip6_schema == published_schema
+
+
+def test_collections(endpoint_url: str, supported_collections: list[str]) -> None:
+    """Check for expected collections."""
+    client = pystac_client.Client.open(endpoint_url)
+    assert set(supported_collections).issubset(
+        [coll.id for coll in client.get_collections()],
+    )
+
+
+def test_facet_counts(endpoint_url: str) -> None:
+    """Can we get facet counts.
+
+    Note
+    ----
+    I don't think that pystac does aggregations so we will use search and then
+    hack the url. This tests is a placeholder and needs improved as the
+    capability grows.
+    """
+    client = pystac_client.Client.open(endpoint_url)
+    results = client.search(
+        collections=["CMIP6"],
+        filter={
+            "args": [{"property": "properties.cmip6:activity_id"}, "VolMIP"],
+            "op": "=",
+        },
+    )
+    url = results.url_with_parameters()
+    url = url.replace(
+        "search?",
+        "aggregate?aggregations=cmip6_source_id_frequency,cmip6_table_id_frequency&",
+    )
+    response = requests.get(url)
+    response.raise_for_status()
+    content = response.json()
+    out = {agg["name"]: [b["key"] for b in agg["buckets"]] for agg in content["aggregations"]}
+    assert "cmip6_source_id_frequency" in out
+    assert "cmip6_table_id_frequency" in out
+    assert len(out["cmip6_source_id_frequency"]) > 0
+    assert len(out["cmip6_table_id_frequency"]) > 0
+
+
+def test_cmip6_collection_geospatial_extent(endpoint_url: str) -> None:
+    """Check for expected collections and print their descriptions.
+
+    Note
+    ----
+    Test from Phil, it may be that this is handled in STAC's validate_all().
+    """
+    client = pystac_client.Client.open(endpoint_url)
+
+    cmip6_coll = client.get_collection("CMIP6")
+
+    cmip6_coll_extent = cmip6_coll.extent.to_dict()
+
+    assert cmip6_coll_extent
+    assert "spatial" in cmip6_coll_extent
+    assert "temporal" in cmip6_coll_extent
+    assert "bbox" in cmip6_coll_extent["spatial"]
+    assert "interval" in cmip6_coll_extent["temporal"]
+
+
+def test_cmip6_temporal_by_datetime(endpoint_url: str) -> None:
+    """Can we get results using the datetime keyword.
+
+    Note
+    ----
+    According to
+    https://pystac-client.readthedocs.io/en/latest/api.html#item-search this
+    should work.
+    """
+    client = pystac_client.Client.open(endpoint_url)
+    item_search = client.search(
+        collections=["CMIP6"],
+        datetime="1850-01-01/2015-01-01",
+        max_items=1,
+    )
+    item = next(item_search.items())
+    assert item
+
+
+def test_cmip6_temporal_by_query(endpoint_url: str) -> None:
+    """Can we get results using a query (not recommended)."""
+    client = pystac_client.Client.open(endpoint_url)
+    item_search = client.search(
+        collections=["CMIP6"],
+        query=["start_datetime>=1850-01-01", "end_datetime<=2015-01-01"],
+        max_items=1,
+    )
+    item = next(item_search.items())
+    assert item
+
+
+def test_cmip6_temporal_by_filter(endpoint_url: str) -> None:
+    """Can we filter results using t_intersects."""
+    client = pystac_client.Client.open(endpoint_url)
+    item_search = client.search(
+        collections=["CMIP6"],
+        filter={
+            "op": "t_intersects",
+            "args": [{"property": "datetime"}, "1850-01-01/2015-01-01"],
+        },
+        max_items=1,
+    )
+    item = next(item_search.items())
+    assert item

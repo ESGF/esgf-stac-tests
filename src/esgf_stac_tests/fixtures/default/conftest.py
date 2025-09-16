@@ -87,3 +87,9 @@ def expected_result_count() -> int:
     """Get the expected result count for the current filter search scenario."""
     # Outside of specfic data challenges, we only care that SOME results were returned
     return NonZero()
+
+
+@pytest.fixture
+def supported_collections() -> list[str]:
+    """Return the collections that should be supported."""
+    return ["CMIP6"]
