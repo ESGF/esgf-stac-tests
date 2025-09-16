@@ -191,3 +191,18 @@ def test_cmip6_temporal_by_filter(endpoint_url: str) -> None:
     )
     item = next(item_search.items())
     assert item
+
+
+def test_query_by_ids(endpoint_url: str) -> None:
+    """Can you give STAC a list of ids."""
+    client = pystac_client.Client.open(endpoint_url)
+    items = list(
+        client.search(
+            collections=["CMIP6"],
+            ids=[
+                "CMIP6.VolMIP.NERC.UKESM1-0-LL.volc-pinatubo-full.r3i1p1f2.SImon.siconca.gr.v20230810",
+                "CMIP6.VolMIP.NERC.UKESM1-0-LL.volc-pinatubo-full.r27i1p1f2.Lmon.mrro.gn.v20230810",
+            ],
+        ).items_as_dicts(),
+    )
+    assert len(items) == 2
