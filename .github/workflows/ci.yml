@@ -10,7 +10,7 @@ on:
 jobs:
   build:
     name: "End-to-end ESGF STAC testing"
-    if: github.repository == 'nocollier/esgf-stac-tests'
+    if: github.repository == 'ESGF/esgf-stac-tests'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     defaults:
