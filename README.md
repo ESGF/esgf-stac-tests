@@ -7,8 +7,8 @@ End-to-end testing of the ESGF STAC infrastructure. This repository of tests is 
 
 [![Continuous Integration][ci-badge]][ci-link]
 
-[ci-badge]: https://github.com/nocollier/esgf-stac-tests/actions/workflows/ci.yml/badge.svg?branch=main
-[ci-link]: https://github.com/nocollier/esgf-stac-tests/actions/workflows/ci.yml
+[ci-badge]: https://github.com/ESGF/esgf-stac-tests/actions/workflows/ci.yml/badge.svg?branch=main
+[ci-link]: https://github.com/ESGF/esgf-stac-tests/actions/workflows/ci.yml
 
 ## Running the tests
 
@@ -16,7 +16,7 @@ End-to-end testing of the ESGF STAC infrastructure. This repository of tests is 
 Using [`uvx`](https://docs.astral.sh/uv/guides/tools/) you can run the tests as a command without installing the package:
 
 ```shell
-$ uvx git+https://github.com/nocollier/esgf-stac-tests.git
+$ uvx git+https://github.com/ESGF/esgf-stac-tests.git
 ================================================== test session starts ==================================================
 platform linux -- Python 3.13.7, pytest-8.4.2, pluggy-1.6.0
 rootdir: /home/zp0/projects
@@ -32,7 +32,7 @@ The CI will run at midnight each day, but can also be triggered manually in "Act
 ## As part of your own `pytest` suite
 1. Add esgf-stac-tests as a dev dependency to your project:
    ```shell
-   $ uv add --dev git+https://github.com/nocollier/esgf-stac-tests.git
+   $ uv add --dev git+https://github.com/ESGF/esgf-stac-tests.git
    ```
 1. Include the tests in your test paths, either:
    - on the command line:
@@ -54,7 +54,7 @@ By default, the tests will be ran against the endpoints defined in [conftest.py]
 
 This can be overridden by passing a comma separated list of urls to the `--stac-endpoints` flag on the command line:
 ```shell
-$ uvx git+https://github.com/nocollier/esgf-stac-tests.git --stac-endpoints "https://api.stac.esgf.ceda.ac.uk,https://data-challenge-04-discovery.api.stac.esgf-west.org"
+$ uvx git+https://github.com/ESGF/esgf-stac-tests.git --stac-endpoints "https://api.stac.esgf.ceda.ac.uk,https://data-challenge-04-discovery.api.stac.esgf-west.org"
 ```
 or by setting the pytest `stac_endpoints` ini_option in `pyproject.toml`:
 ```toml
