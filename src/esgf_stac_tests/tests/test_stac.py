@@ -1,5 +1,6 @@
 """Tests for STAC endpoints."""
 
+import copy
 import pystac_client
 import pytest
 import requests
@@ -206,3 +207,56 @@ def test_query_by_ids(endpoint_url: str) -> None:
         ).items_as_dicts(),
     )
     assert len(items) == 2
+
+
+def test_compare_filter_and_filter_exp(endpoint_url: str) -> None:
+    """See if the filter and filter_exp give the same results.
+
+    Note
+    ----
+    Climate4impact used the filter on CEDA instead of the filter_exp. This gave the results we expected.
+    After hearing we should use filter_exp because it had a name change we got different behavior.
+    We preferred the behavior of filter.
+    """
+    url = f"{endpoint_url}/aggregate"
+
+    stac_filter = {
+            "op": "and",
+            "args": [
+                {
+                    "op": "=",
+                    "args": [
+                        {"property": "cmip6:variable_id"},
+                        "tas"
+                    ]
+                },
+                {
+                    "op": "=",
+                    "args": [
+                        {"property": "cmip6:frequency"},
+                        "3hr"
+                    ]
+                }
+            ]
+        }
+
+    payload = {
+        "collections": ["CMIP6"],
+        "sortBy": ["created"],
+        "aggregations": ["cmip6_experiment_id_frequency"]
+    }
+
+    payload_filter = copy.deepcopy(payload)
+    payload_filter_exp = copy.deepcopy(payload)
+
+    payload_filter["filter"] = stac_filter
+    payload_filter_exp["filter_exp"] = stac_filter
+
+
+    response_filter = requests.post(url, json=payload_filter)
+    body_filter = response_filter.json()
+
+    response_filter_exp = requests.post(url,json=payload_filter_exp)
+    body_filter_exp = response_filter_exp.json()
+
+    assert body_filter == body_filter_exp
