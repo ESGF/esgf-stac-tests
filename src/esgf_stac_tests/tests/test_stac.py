@@ -209,6 +209,17 @@ def test_query_by_ids(endpoint_url: str) -> None:
     assert len(items) == 2
 
 
+def test_collection_items(endpoint_url: str) -> None:
+    """Test the items endpoint for a dataset in a collection."""
+    dataset = "CMIP6.ScenarioMIP.MPI-M.MPI-ESM1-2-LR.ssp245.r5i1p1f1.3hr.tas.gn.v20190710"
+    url = f"{endpoint_url}/collections/CMIP6/items/{dataset}"
+    response = requests.get(url)
+    assert response.status_code == 200, "No success response from STAC endpoint."
+    body  = response.json()
+
+    assert len(body["assets"]) == 6, "Expected 6 assets in response."
+
+
 def test_compare_filter_and_filter_exp(endpoint_url: str) -> None:
     """See if the filter and filter_exp give the same results.
 
