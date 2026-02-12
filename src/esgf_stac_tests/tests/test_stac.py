@@ -271,3 +271,58 @@ def test_compare_filter_and_filter_exp(endpoint_url: str) -> None:
     body_filter_exp = response_filter_exp.json()
 
     assert body_filter == body_filter_exp
+
+
+def test_aggregate_endpoint_uses_no_filter(endpoint_url: str) -> None:
+    """To me it looks like the aggregate endpoint does not use the filter_exp.
+
+    """
+    url = f"{endpoint_url}/aggregate"
+
+
+    stac_filter = {
+            "op": "and",
+            "args": [
+                {
+                    "op": "=",
+                    "args": [
+                        {"property": "cmip6:variable_id"},
+                        "tas"
+                    ]
+                },
+                {
+                    "op": "=",
+                    "args": [
+                        {"property": "cmip6:frequency"},
+                        "3hr"
+                    ]
+                },
+                {
+                    "op": "=",
+                    "args": [
+                        {"property": "cmip6:experiment_id"},
+                        "ssp585"
+                    ]
+                }
+            ]
+        }
+
+    payload = {
+        "collections": ["CMIP6"],
+        "sortBy": ["created"],
+        "aggregations": ["cmip6_experiment_id_frequency"]
+    }
+
+
+    payload_filter = copy.deepcopy(payload)
+    payload_no_filter = copy.deepcopy(payload)
+
+    payload_filter["filter_exp"] = stac_filter
+
+    response_filter = requests.post(url, json=payload_filter)
+    body_filter = response_filter.json()
+
+    response_no_filter = requests.post(url, json=payload_no_filter)
+    body_no_filter = response_no_filter.json()
+
+    assert body_filter == body_no_filter
