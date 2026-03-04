@@ -326,3 +326,62 @@ def test_aggregate_endpoint_uses_no_filter(endpoint_url: str) -> None:
     body_no_filter = response_no_filter.json()
 
     assert body_filter == body_no_filter
+
+def test_aggregate_endpoint_with_filter_gives_400_with_different_error_body_for_east_and_west(
+        endpoint_url: str) -> None:
+    """To me it looks like it's a python error
+
+    Note
+    ----
+    Climate4impact when stil using the same filter expression on CEDA as before the changes I now the an error.
+    On west I also get an error but the format of the message is different. Should those not be the same?
+    """
+    url = f"{endpoint_url}/aggregate"
+
+    stac_filter_1 = {
+        "op": "and",
+        "args": [
+            {
+                "op": "=",
+                "args": [
+                    {"property": "cmip6:variable_id"},
+                    "tas"
+                ]
+            },
+            {
+                "op": "=",
+                "args": [
+                    {"property": "cmip6:frequency"},
+                    "3hr"
+                ]
+            },
+            {
+                "op": "=",
+                "args": [
+                    {"property": "cmip6:experiment_id"},
+                    "ssp585"
+                ]
+            }
+        ]
+    }
+
+    payload = {
+        "collections": ["CMIP6"],
+        "sortBy": ["created"],
+        "aggregations": ["cmip6_experiment_id_frequency"]
+    }
+
+    payload_filter_1 = copy.deepcopy(payload)
+
+    payload_filter_1["filter"] = stac_filter_1
+
+    response_filter_1 = requests.post(url, json=payload_filter_1)
+    body_filter_1 = response_filter_1.json()
+
+    if endpoint_url == "https://data-challenge-04-discovery.api.stac.esgf-west.org":
+        assert body_filter_1 == {
+            'code': 'AttributeError',
+            'description': "'tuple' object has no attribute 'lstrip'"
+        }
+    elif endpoint_url == "https://api.stac.esgf.ceda.ac.uk":
+        assert body_filter_1 == {'detail': 'Error with cql2 filter: dictionary changed size during iteration'}
