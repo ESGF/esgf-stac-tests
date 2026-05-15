@@ -18,7 +18,9 @@ class NonZero(int):
 
     def __eq__(self, other: object) -> bool:
         """Match any positive integer."""
-        return other > 0  # pyright: ignore[reportOperatorIssue] -- other is object, but we only expect int here
+        return (
+            other > 0
+        )  # pyright: ignore[reportOperatorIssue] -- other is object, but we only expect int here
 
 
 CQL_FILTERS: dict[str, FilterLike] = {
@@ -41,28 +43,43 @@ CQL_FILTERS: dict[str, FilterLike] = {
         "args": [{"property": "properties.cmip6:variable_id"}, ["rsus", "rsds"]],
     },
     # ---------------------------------------------------
-    "var_id_tas_source_id_MIROC6": {
+    "var_id_snw_source_id_ACCESS-ESM1-5": {
         "op": "and",
         "args": [
             {
-                "args": [{"property": "properties.cmip6:variable_id"}, "tas"],
+                "args": [{"property": "properties.cmip6:variable_id"}, "snw"],
                 "op": "=",
             },
             {
-                "args": [{"property": "properties.cmip6:source_id"}, "MIROC6"],
+                "args": [{"property": "properties.cmip6:source_id"}, "ACCESS-ESM1-5"],
                 "op": "=",
             },
         ],
     },
     # ---------------------------------------------------
-    "member_id_eq_r2i1p1f1": {
-        "args": [{"property": "properties.cmip6:member_id"}, "r2i1p1f1"],
+    "member_id_eq_r4i1p1f1": {
+        "args": [{"property": "properties.cmip6:member_id"}, "r4i1p1f1"],
         "op": "=",
     },
     # ---------------------------------------------------
-    "variant_label_eq_r2i1p1f1": {
-        "args": [{"property": "properties.cmip6:variant_label"}, "r2i1p1f1"],
+    "variant_label_eq_r4i1p1f1": {
+        "args": [{"property": "properties.cmip6:variant_label"}, "r4i1p1f1"],
         "op": "=",
+    },
+    # ---------------------------------------------------
+    "specific_node": {
+        "op": "=",
+        "args": [{"property": "alternate:name"}, "ceda.ac.uk"],
+    },
+    # ---------------------------------------------------
+}
+
+FREE_TEXT_FILTERS: dict[str, dict] = {
+    "temperature": {"q": ["temperature"]},
+    # ---------------------------------------------------
+    "wind_and_filter": {
+        "q": ["wind"],
+        "filter": {"op": "=", "args": [{"property": "properties.latest"}, "true"]},
     },
     # ---------------------------------------------------
 }
@@ -75,11 +92,30 @@ class FilterScenario(TypedDict):
     filter: FilterLike
 
 
+class FreeTextScenario(TypedDict):
+    """Free-text search query."""
+
+    name: str
+    q: list[str]
+    filter: FilterLike
+
+
 @pytest.fixture(params=CQL_FILTERS)
 def filter_scenario(request: pytest.FixtureRequest) -> FilterScenario:
     """Parameterize each test with each filter scenario in `CQL_FILTERS`."""
     # Create a scenario name to filter mapping
     return {"name": request.param, "filter": CQL_FILTERS[request.param]}
+
+
+@pytest.fixture(params=FREE_TEXT_FILTERS)
+def free_text_scenario(request: pytest.FixtureRequest) -> FreeTextScenario:
+    """Parameterize each test with each free-text scenario in `FREE_TEXT_FILTERS`."""
+    # Create a scenario name to filter mapping
+    return {
+        "name": request.param,
+        "q": FREE_TEXT_FILTERS[request.param].get("q"),
+        "filter": FREE_TEXT_FILTERS[request.param].get("filter"),
+    }
 
 
 @pytest.fixture

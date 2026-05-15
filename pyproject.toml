@@ -14,6 +14,14 @@ dependencies = [
 [tool.pytest.ini_options]
 console_output_style = "count"
 addopts = "--verbose"
+stac_endpoints = [
+    # ESGF East
+    "https://integration-testing.api.stac.esgf-west.org",
+    # ESGF West
+    "https://api.stac.esgf.ceda.ac.uk",
+]
+
+
 testpaths = "src/esgf_stac_tests/tests"
 
 [project.scripts]
