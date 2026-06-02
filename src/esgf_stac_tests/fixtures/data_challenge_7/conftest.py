@@ -1,4 +1,4 @@
-"""Fixture overrides for Data Challenge 7."""
+"""Fixture overrides for Data Challenge 7 (intergration)."""
 
 import pytest
 
