@@ -1,5 +1,6 @@
 """Tests for STAC endpoints."""
 
+import copy
 import pystac_client
 import pytest
 import requests
@@ -275,3 +276,181 @@ def test_query_by_ids(endpoint_url: str) -> None:
         ).items_as_dicts(),
     )
     assert len(items) == 2
+
+
+def test_collection_items(endpoint_url: str) -> None:
+    """Test the items endpoint for a dataset in a collection."""
+    dataset = "CMIP6.ScenarioMIP.MPI-M.MPI-ESM1-2-LR.ssp245.r5i1p1f1.3hr.tas.gn.v20190710"
+    url = f"{endpoint_url}/collections/CMIP6/items/{dataset}"
+    response = requests.get(url)
+    assert response.status_code == 200, "No success response from STAC endpoint."
+    body  = response.json()
+
+    assert len(body["assets"]) == 6, "Expected 6 assets in response."
+
+
+def test_compare_filter_and_filter_exp(endpoint_url: str) -> None:
+    """See if the filter and filter_exp give the same results.
+
+    Note
+    ----
+    Climate4impact used the filter on CEDA instead of the filter_exp. This gave the results we expected.
+    After hearing we should use filter_exp because it had a name change we got different behavior.
+    We preferred the behavior of filter.
+    """
+    url = f"{endpoint_url}/aggregate"
+
+    stac_filter = {
+            "op": "and",
+            "args": [
+                {
+                    "op": "=",
+                    "args": [
+                        {"property": "cmip6:variable_id"},
+                        "tas"
+                    ]
+                },
+                {
+                    "op": "=",
+                    "args": [
+                        {"property": "cmip6:frequency"},
+                        "3hr"
+                    ]
+                }
+            ]
+        }
+
+    payload = {
+        "collections": ["CMIP6"],
+        "sortBy": ["created"],
+        "aggregations": ["cmip6_experiment_id_frequency"]
+    }
+
+    payload_filter = copy.deepcopy(payload)
+    payload_filter_exp = copy.deepcopy(payload)
+
+    payload_filter["filter"] = stac_filter
+    payload_filter_exp["filter_exp"] = stac_filter
+
+
+    response_filter = requests.post(url, json=payload_filter)
+    body_filter = response_filter.json()
+
+    response_filter_exp = requests.post(url,json=payload_filter_exp)
+    body_filter_exp = response_filter_exp.json()
+
+    assert body_filter == body_filter_exp
+
+
+def test_aggregate_endpoint_uses_no_filter(endpoint_url: str) -> None:
+    """To me it looks like the aggregate endpoint does not use the filter_exp.
+
+    """
+    url = f"{endpoint_url}/aggregate"
+
+
+    stac_filter = {
+            "op": "and",
+            "args": [
+                {
+                    "op": "=",
+                    "args": [
+                        {"property": "cmip6:variable_id"},
+                        "tas"
+                    ]
+                },
+                {
+                    "op": "=",
+                    "args": [
+                        {"property": "cmip6:frequency"},
+                        "3hr"
+                    ]
+                },
+                {
+                    "op": "=",
+                    "args": [
+                        {"property": "cmip6:experiment_id"},
+                        "ssp585"
+                    ]
+                }
+            ]
+        }
+
+    payload = {
+        "collections": ["CMIP6"],
+        "sortBy": ["created"],
+        "aggregations": ["cmip6_experiment_id_frequency"]
+    }
+
+
+    payload_filter = copy.deepcopy(payload)
+    payload_no_filter = copy.deepcopy(payload)
+
+    payload_filter["filter_exp"] = stac_filter
+
+    response_filter = requests.post(url, json=payload_filter)
+    body_filter = response_filter.json()
+
+    response_no_filter = requests.post(url, json=payload_no_filter)
+    body_no_filter = response_no_filter.json()
+
+    assert body_filter == body_no_filter
+
+def test_aggregate_endpoint_with_filter_gives_400_with_different_error_body_for_east_and_west(
+        endpoint_url: str) -> None:
+    """To me it looks like it's a python error
+
+    Note
+    ----
+    Climate4impact when stil using the same filter expression on CEDA as before the changes I now the an error.
+    On west I also get an error but the format of the message is different. Should those not be the same?
+    """
+    url = f"{endpoint_url}/aggregate"
+
+    stac_filter_1 = {
+        "op": "and",
+        "args": [
+            {
+                "op": "=",
+                "args": [
+                    {"property": "cmip6:variable_id"},
+                    "tas"
+                ]
+            },
+            {
+                "op": "=",
+                "args": [
+                    {"property": "cmip6:frequency"},
+                    "3hr"
+                ]
+            },
+            {
+                "op": "=",
+                "args": [
+                    {"property": "cmip6:experiment_id"},
+                    "ssp585"
+                ]
+            }
+        ]
+    }
+
+    payload = {
+        "collections": ["CMIP6"],
+        "sortBy": ["created"],
+        "aggregations": ["cmip6_experiment_id_frequency"]
+    }
+
+    payload_filter_1 = copy.deepcopy(payload)
+
+    payload_filter_1["filter"] = stac_filter_1
+
+    response_filter_1 = requests.post(url, json=payload_filter_1)
+    body_filter_1 = response_filter_1.json()
+
+    if endpoint_url == "https://data-challenge-04-discovery.api.stac.esgf-west.org":
+        assert body_filter_1 == {
+            'code': 'AttributeError',
+            'description': "'tuple' object has no attribute 'lstrip'"
+        }
+    elif endpoint_url == "https://api.stac.esgf.ceda.ac.uk":
+        assert body_filter_1 == {'detail': 'Error with cql2 filter: dictionary changed size during iteration'}
