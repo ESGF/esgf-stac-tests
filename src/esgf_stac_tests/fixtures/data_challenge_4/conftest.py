@@ -9,9 +9,9 @@ def expected_result_count(request: pytest.FixtureRequest) -> int:
     result_counts: dict[str, int] = {
         "var_id_eq_rsus_rsds": 56,
         "var_id_in_rsus_rsds": 56,
-        "var_id_tas_source_id_MIROC6": 2,
-        "member_id_eq_r2i1p1f1": 19,
-        "variant_label_eq_r2i1p1f1": 22,
+        "var_id_snw_source_id_ACCESS-ESM1-5": 952,
+        "member_id_eq_r4i1p1f1": 952,
+        "variant_label_eq_r4i1p1f1": 952,
     }
 
     # Get the value of the "filter_scenario" parameter for the current test
