@@ -140,7 +140,7 @@ def test_facet_counts(endpoint_url: str) -> None:
     results = client.search(
         collections=["CMIP6"],
         filter={
-            "args": [{"property": "properties.cmip6:activity_id"}, "ScenarioMIP"],
+            "args": [{"property": "cmip6:activity_id"}, "ScenarioMIP"],
             "op": "=",
         },
     )
@@ -175,7 +175,7 @@ def test_node_counts(endpoint_url: str) -> None:
     results = client.search(
         collections=["CMIP6"],
         filter={
-            "args": [{"property": "properties.cmip6:activity_id"}, "ScenarioMIP"],
+            "args": [{"property": "cmip6:activity_id"}, "ScenarioMIP"],
             "op": "=",
         },
     )

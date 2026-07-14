@@ -28,11 +28,11 @@ CQL_FILTERS: dict[str, FilterLike] = {
         "op": "or",
         "args": [
             {
-                "args": [{"property": "properties.cmip6:variable_id"}, "rsus"],
+                "args": [{"property": "cmip6:variable_id"}, "rsus"],
                 "op": "=",
             },
             {
-                "args": [{"property": "properties.cmip6:variable_id"}, "rsds"],
+                "args": [{"property": "cmip6:variable_id"}, "rsds"],
                 "op": "=",
             },
         ],
@@ -40,30 +40,30 @@ CQL_FILTERS: dict[str, FilterLike] = {
     # ---------------------------------------------------
     "var_id_in_rsus_rsds": {
         "op": "in",
-        "args": [{"property": "properties.cmip6:variable_id"}, ["rsus", "rsds"]],
+        "args": [{"property": "cmip6:variable_id"}, ["rsus", "rsds"]],
     },
     # ---------------------------------------------------
     "var_id_snw_source_id_ACCESS-ESM1-5": {
         "op": "and",
         "args": [
             {
-                "args": [{"property": "properties.cmip6:variable_id"}, "snw"],
+                "args": [{"property": "cmip6:variable_id"}, "snw"],
                 "op": "=",
             },
             {
-                "args": [{"property": "properties.cmip6:source_id"}, "ACCESS-ESM1-5"],
+                "args": [{"property": "cmip6:source_id"}, "ACCESS-ESM1-5"],
                 "op": "=",
             },
         ],
     },
     # ---------------------------------------------------
     "member_id_eq_r4i1p1f1": {
-        "args": [{"property": "properties.cmip6:member_id"}, "r4i1p1f1"],
+        "args": [{"property": "cmip6:member_id"}, "r4i1p1f1"],
         "op": "=",
     },
     # ---------------------------------------------------
     "variant_label_eq_r4i1p1f1": {
-        "args": [{"property": "properties.cmip6:variant_label"}, "r4i1p1f1"],
+        "args": [{"property": "cmip6:variant_label"}, "r4i1p1f1"],
         "op": "=",
     },
     # ---------------------------------------------------
