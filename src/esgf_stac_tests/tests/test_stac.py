@@ -9,36 +9,44 @@ from esgf_stac_tests.fixtures.default.conftest import (
     FreeTextScenario,
 )
 
+class EmptyResultError(Exception):
+    """A blank exception to raies in place of StopIteration when the catalog returns nothing."""
 
 def test_searching_with_filters(
-    endpoint_url: str, filter_scenario: FilterScenario, expected_result_count: int
+    endpoint_url: str, filter_scenario: FilterScenario, expected_result_count: int,
 ) -> None:
     """Verify that filtered searches return results."""
     client = pystac_client.Client.open(endpoint_url)
-    page = next(
-        iter(
-            client.search(
-                collections="CMIP6", filter=filter_scenario["filter"]
-            ).pages_as_dicts()
+    try:
+        page = next(
+            iter(
+                client.search(
+                    collections="CMIP6", filter=filter_scenario["filter"],
+                ).pages_as_dicts(),
+            ),
         )
-    )
+    except StopIteration as exc:
+        raise EmptyResultError from exc
     assert page["numberMatched"] == expected_result_count
 
 
 def test_searching_with_free_text(
-    endpoint_url: str, free_text_scenario: FreeTextScenario, expected_result_count: int
+    endpoint_url: str, free_text_scenario: FreeTextScenario, expected_result_count: int,
 ) -> None:
     """Verify that free text searches return results."""
     client = pystac_client.Client.open(endpoint_url)
-    page = next(
-        iter(
-            client.search(
-                collections="CMIP6",
-                filter=free_text_scenario["filter"],
-                query=free_text_scenario["q"],
-            ).pages_as_dicts()
+    try:
+        page = next(
+            iter(
+                client.search(
+                    collections="CMIP6",
+                    filter=free_text_scenario["filter"],
+                    query=free_text_scenario["q"],
+                ).pages_as_dicts(),
+            ),
         )
-    )
+    except StopIteration as exc:
+        raise EmptyResultError from exc
     assert page["numberMatched"] == expected_result_count
 
 
@@ -64,14 +72,23 @@ def test_pagination(endpoint_url: str) -> None:
     search_pages = client.search(
         collections="CMIP6",
         filter={
-            "op": "in",
-            "args": [
-                {"property": "properties.cmip6:activity_id"},
-                ["CMIP", "AerChemMIP"],
-            ],
-        },
+                   "op": "and",
+                   "args": [
+                       {
+                           "args": [{"property": "cmip6:variable_id"}, "rsus"],
+                           "op": "=",
+                       },
+                       {
+                           "args": [{"property": "cmip6:activity_id"}, "CMIP"],
+                           "op": "=",
+                       },
+                   ],
+               },
     ).pages_as_dicts()
-    first_page = next(search_pages)
+    try:
+        first_page = next(search_pages)
+    except StopIteration as exc:
+        raise EmptyResultError from exc
 
     expected_pages = int(first_page["numberMatched"] / first_page["numberReturned"])
     actual_pages = sum(1 for _ in search_pages)
