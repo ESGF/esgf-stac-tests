@@ -139,7 +139,7 @@ def test_collections(endpoint_url: str, supported_collections: list[str]) -> Non
     """Check for expected collections."""
     client = pystac_client.Client.open(endpoint_url)
     assert set(supported_collections).issubset(
-        [coll.id for coll in client.get_collections()],
+        [coll.title for coll in client.get_collections()],
     )
 
 
