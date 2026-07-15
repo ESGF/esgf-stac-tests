@@ -8,7 +8,7 @@ import pytest
 
 DEFAULT_STAC_ENDPOINTS: list[str] = [
     "https://api.stac.esgf.ceda.ac.uk",
-    "https://integration-testing.api.stac.esgf-west.org/",
+    "https://discovery.integration.esgf-west.org",
 ]
 
 
