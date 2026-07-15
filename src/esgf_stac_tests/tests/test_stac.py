@@ -96,7 +96,6 @@ def test_pagination(endpoint_url: str) -> None:
     assert actual_pages == expected_pages
 
 
-@pytest.mark.xfail(reason="CMIP6 STAC extension used is not public")
 def test_validate_catalog(endpoint_url: str) -> None:
     """Validate the STAC catalog for the endpoint against the STAC spec."""
     pystac_client.Client.open(endpoint_url).validate_all()
