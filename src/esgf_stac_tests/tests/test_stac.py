@@ -143,70 +143,50 @@ def test_collections(endpoint_url: str, supported_collections: list[str]) -> Non
     )
 
 
-def test_facet_counts(endpoint_url: str) -> None:
-    """Can we get facet counts.
+def test_aggregation_facet_frequency(endpoint_url: str) -> None:
+    """Check that we can return counts of facets.
 
     Note
     ----
-    I don't think that pystac does aggregations so we will use search and then
-    hack the url. This tests is a placeholder and needs improved as the
-    capability grows.
+    I don't think that pystac does aggregations natively, so we will form a post
+    request manually instead.
     """
-    client = pystac_client.Client.open(endpoint_url)
-    results = client.search(
-        collections=["CMIP6"],
-        filter={
-            "args": [{"property": "cmip6:activity_id"}, "ScenarioMIP"],
-            "op": "=",
+    response = requests.post(
+        f"{endpoint_url}/aggregate",
+        json={
+            "collections": ["CMIP6"],
+            "filter_exp": {"args": [{"property": "cmip6:activity_id"}, "ScenarioMIP"], "op": "="},
+            "aggregations": ["cmip6_source_id_frequency", "cmip6_table_id_frequency"],
         },
     )
-    url = results.url_with_parameters()
-    url = url.replace(
-        "search?",
-        "aggregate?aggregations=cmip6_source_id_frequency,cmip6_table_id_frequency&",
-    )
-    response = requests.get(url)
     response.raise_for_status()
     content = response.json()
-    out = {
-        agg["name"]: [b["key"] for b in agg["buckets"]]
-        for agg in content["aggregations"]
-    }
+    out = {agg["name"]: [b["key"] for b in agg["buckets"]] for agg in content["aggregations"]}
     assert "cmip6_source_id_frequency" in out
     assert "cmip6_table_id_frequency" in out
     assert len(out["cmip6_source_id_frequency"]) > 0
     assert len(out["cmip6_table_id_frequency"]) > 0
 
 
-def test_node_counts(endpoint_url: str) -> None:
-    """Can we get facet counts.
+def test_aggregation_alt_name(endpoint_url: str) -> None:
+    """Check that we can get counts for `alternate_name_frequency`.
 
     Note
     ----
-    I don't think that pystac does aggregations so we will use search and then
-    hack the url. This tests is a placeholder and needs improved as the
-    capability grows.
+    I don't think that pystac does aggregations natively, so we will form a post
+    request manually instead.
     """
-    client = pystac_client.Client.open(endpoint_url)
-    results = client.search(
-        collections=["CMIP6"],
-        filter={
-            "args": [{"property": "cmip6:activity_id"}, "ScenarioMIP"],
-            "op": "=",
+    response = requests.post(
+        f"{endpoint_url}/aggregate",
+        json={
+            "collections": ["CMIP6"],
+            "filter_exp": {"args": [{"property": "cmip6:activity_id"}, "ScenarioMIP"], "op": "="},
+            "aggregations": ["alternate_name_frequency"],
         },
     )
-    url = results.url_with_parameters()
-    url = url.replace(
-        "search?",
-        "aggregate?aggregations=alternate_name_frequency&",
-    )
-    response = requests.get(url)
     response.raise_for_status()
     content = response.json()
-    out = {
-        agg["name"]: [b["key"] for b in agg["buckets"]]
-        for agg in content["aggregations"]
-    }
+    out = {agg["name"]: [b["key"] for b in agg["buckets"]] for agg in content["aggregations"]}
     assert "alternate_name_frequency" in out
     assert "esgf-data.nersc.gov" in out["alternate_name_frequency"]
     assert len(out["alternate_name_frequency"]) > 0
@@ -268,10 +248,7 @@ def test_cmip6_temporal_by_filter(endpoint_url: str) -> None:
     client = pystac_client.Client.open(endpoint_url)
     item_search = client.search(
         collections=["CMIP6"],
-        filter={
-            "op": "t_intersects",
-            "args": [{"property": "datetime"}, "1850-01-01/2015-01-01"],
-        },
+        filter={"op": "t_intersects", "args": [{"property": "datetime"}, {"interval": ["1850-01-01T00:00:00Z", "2015-01-01T00:00:00Z"]}]},
         max_items=1,
     )
     item = next(item_search.items())
