@@ -268,3 +268,45 @@ def test_query_by_ids(endpoint_url: str) -> None:
         ).items_as_dicts(),
     )
     assert len(items) == 2
+
+
+def test_searching_with_filters_from_first(
+    endpoint_url: str,
+) -> None:
+    """Create a filter from the first results and the verify we can search for it."""
+
+    def _create_filter(endpoint_url: str):
+        client = pystac_client.Client.open(endpoint_url)
+        try:
+            page = next(
+                iter(
+                    client.search(
+                        collections="CMIP6",
+                        max_items=1,
+                    ).pages_as_dicts(),
+                ),
+            )
+        except StopIteration as exc:
+            raise EmptyResultError from exc
+        properties = page["features"][0]["properties"]
+        return {
+            "op": "and",
+            "args": [
+                {"args": [{"property": "cmip6:variable_id"}, properties["cmip6:variable_id"]], "op": "="},
+                {"args": [{"property": "cmip6:source_id"}, properties["cmip6:source_id"]], "op": "="},
+            ],
+        }
+
+    client = pystac_client.Client.open(endpoint_url)
+    try:
+        page = next(
+            iter(
+                client.search(
+                    collections="CMIP6",
+                    filter=_create_filter(endpoint_url),
+                ).pages_as_dicts(),
+            ),
+        )
+    except StopIteration as exc:
+        raise EmptyResultError from exc
+    assert page["numberMatched"] > 0
