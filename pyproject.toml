@@ -16,9 +16,9 @@ console_output_style = "count"
 addopts = "--verbose"
 stac_endpoints = [
     # ESGF West
-    "https://discovery.integration.esgf-west.org",
+    "https://search-int.west.esgf.io/",
     # ESGF East
-    "https://api.stac.esgf.ceda.ac.uk",
+    "https://search-int.east.esgf.io/",
 ]
 
 testpaths = "src/esgf_stac_tests/tests"

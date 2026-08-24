@@ -18,9 +18,7 @@ class NonZero(int):
 
     def __eq__(self, other: object) -> bool:
         """Match any positive integer."""
-        return (
-            other > 0
-        )  # pyright: ignore[reportOperatorIssue] -- other is object, but we only expect int here
+        return other > 0  # pyright: ignore[reportOperatorIssue] -- other is object, but we only expect int here
 
 
 CQL_FILTERS: dict[str, FilterLike] = {
@@ -43,7 +41,7 @@ CQL_FILTERS: dict[str, FilterLike] = {
         "args": [{"property": "cmip6:variable_id"}, ["rsus", "rsds"]],
     },
     # ---------------------------------------------------
-    "var_id_snw_source_id_ACCESS-ESM1-5": {
+    "var_id_snw_source_id_E3SM-1-0": {
         "op": "and",
         "args": [
             {
@@ -51,7 +49,7 @@ CQL_FILTERS: dict[str, FilterLike] = {
                 "op": "=",
             },
             {
-                "args": [{"property": "cmip6:source_id"}, "ACCESS-ESM1-5"],
+                "args": [{"property": "cmip6:source_id"}, "E3SM-1-0"],
                 "op": "=",
             },
         ],
@@ -69,7 +67,7 @@ CQL_FILTERS: dict[str, FilterLike] = {
     # ---------------------------------------------------
     "specific_node": {
         "op": "=",
-        "args": [{"property": "alternate:name"}, "ceda.ac.uk"],
+        "args": [{"property": "alternate:name"}, "eagle.alcf.anl.gov"],
     },
     # ---------------------------------------------------
 }
