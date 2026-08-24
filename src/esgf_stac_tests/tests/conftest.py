@@ -27,7 +27,7 @@ def pytest_addoption(parser: pytest.Parser) -> None:
         action="store",
         default=0,
         type=int,
-        help="Run tests with expectations for a specific Data Challenge (0-4).",
+        help="Run tests with expectations for a specific Data Challenge (1).",
     )
 
 
