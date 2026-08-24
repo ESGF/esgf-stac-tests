@@ -6,18 +6,13 @@ This file defines pytest fixtures and hooks to support testing against multiple 
 
 import pytest
 
-DEFAULT_STAC_ENDPOINTS: list[str] = [
-    "https://api.stac.esgf.ceda.ac.uk",
-    "https://integration-testing.api.stac.esgf-west.org/",
-]
+DEFAULT_STAC_ENDPOINTS: list[str] = ["https://search-int.east.esgf.io/", "https://search-int.west.esgf.io/"]
 
 
 def pytest_addoption(parser: pytest.Parser) -> None:
     """Pytest hook to add custom ini and command-line options."""
     group: pytest.OptionGroup = parser.getgroup("esgf", "ESGF STAC Tests Options")
-    parser.addini(
-        "stac_endpoints", type="args", help="STAC endpoint URLs to test against."
-    )
+    parser.addini("stac_endpoints", type="args", help="STAC endpoint URLs to test against.")
 
     group.addoption(
         "--stac-endpoints",
@@ -32,7 +27,7 @@ def pytest_addoption(parser: pytest.Parser) -> None:
         action="store",
         default=0,
         type=int,
-        help="Run tests with expectations for a specific Data Challenge (0-4).",
+        help="Run tests with expectations for a specific Data Challenge (1).",
     )
 
 
@@ -56,9 +51,7 @@ def pytest_configure(config: pytest.Config) -> None:
     data_challenge = config.getoption("--data-challenge")
     if data_challenge > 0:
         # Load fixtures from the `fixtures/data_challenge_X/conftest.py` if a non-zero data challenge is specified
-        config.pluginmanager.import_plugin(
-            f"esgf_stac_tests.fixtures.data_challenge_{data_challenge}.conftest"
-        )
+        config.pluginmanager.import_plugin(f"esgf_stac_tests.fixtures.data_challenge_{data_challenge}.conftest")
 
 
 @pytest.fixture(autouse=True)
@@ -83,6 +76,4 @@ def pytest_report_header(config: pytest.Config) -> list[str] | None:
 def pytest_generate_tests(metafunc: pytest.Metafunc) -> None:
     """Pytest hook to parameterize tests over the selected STAC endpoints."""
     if "endpoint_url" in metafunc.fixturenames:
-        metafunc.parametrize(
-            "endpoint_url", metafunc.config.getoption("--stac-endpoints")
-        )
+        metafunc.parametrize("endpoint_url", metafunc.config.getoption("--stac-endpoints"))

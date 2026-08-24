@@ -15,12 +15,11 @@ dependencies = [
 console_output_style = "count"
 addopts = "--verbose"
 stac_endpoints = [
-    # ESGF East
-    "https://integration-testing.api.stac.esgf-west.org",
     # ESGF West
-    "https://api.stac.esgf.ceda.ac.uk",
+    "https://search-int.west.esgf.io/",
+    # ESGF East
+    "https://search-int.east.esgf.io/",
 ]
-
 
 testpaths = "src/esgf_stac_tests/tests"
 

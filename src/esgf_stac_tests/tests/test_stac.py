@@ -9,36 +9,53 @@ from esgf_stac_tests.fixtures.default.conftest import (
     FreeTextScenario,
 )
 
+TEST_COLLECTION = "CMIP6Test"
+
+
+class EmptyResultError(Exception):
+    """A blank exception to raise in place of StopIteration when the catalog returns nothing."""
+
 
 def test_searching_with_filters(
-    endpoint_url: str, filter_scenario: FilterScenario, expected_result_count: int
+    endpoint_url: str,
+    filter_scenario: FilterScenario,
+    expected_result_count: int,
 ) -> None:
     """Verify that filtered searches return results."""
     client = pystac_client.Client.open(endpoint_url)
-    page = next(
-        iter(
-            client.search(
-                collections="CMIP6", filter=filter_scenario["filter"]
-            ).pages_as_dicts()
+    try:
+        page = next(
+            iter(
+                client.search(
+                    collections=TEST_COLLECTION,
+                    filter=filter_scenario["filter"],
+                ).pages_as_dicts(),
+            ),
         )
-    )
+    except StopIteration as exc:
+        raise EmptyResultError from exc
     assert page["numberMatched"] == expected_result_count
 
 
 def test_searching_with_free_text(
-    endpoint_url: str, free_text_scenario: FreeTextScenario, expected_result_count: int
+    endpoint_url: str,
+    free_text_scenario: FreeTextScenario,
+    expected_result_count: int,
 ) -> None:
     """Verify that free text searches return results."""
     client = pystac_client.Client.open(endpoint_url)
-    page = next(
-        iter(
-            client.search(
-                collections="CMIP6",
-                filter=free_text_scenario["filter"],
-                query=free_text_scenario["q"],
-            ).pages_as_dicts()
+    try:
+        page = next(
+            iter(
+                client.search(
+                    collections=TEST_COLLECTION,
+                    filter=free_text_scenario["filter"],
+                    query=free_text_scenario["q"],
+                ).pages_as_dicts(),
+            ),
         )
-    )
+    except StopIteration as exc:
+        raise EmptyResultError from exc
     assert page["numberMatched"] == expected_result_count
 
 
@@ -46,11 +63,9 @@ def test_assets_include_file_extention_attributes(endpoint_url: str) -> None:
     """Verify Item Assets include the file:size and file:checksum attributes from the `file` STAC extension."""
     client = pystac_client.Client.open(endpoint_url)
 
-    search_pages = client.search(collections="CMIP6").pages()
+    search_pages = client.search(collections=TEST_COLLECTION).pages()
     first_page = next(search_pages)
-    asset = list(
-        first_page.items[0].get_assets(media_type="application/netcdf").values()
-    )[0]
+    asset = list(first_page.items[0].get_assets(media_type="application/netcdf").values())[0]
 
     assert "file:size" in asset.extra_fields
     assert "file:checksum" in asset.extra_fields
@@ -62,16 +77,29 @@ def test_pagination(endpoint_url: str) -> None:
     client = pystac_client.Client.open(endpoint_url)
 
     search_pages = client.search(
-        collections="CMIP6",
+        collections=TEST_COLLECTION,
         filter={
-            "op": "in",
+            "op": "and",
             "args": [
-                {"property": "properties.cmip6:activity_id"},
-                ["CMIP", "AerChemMIP"],
+                {
+                    "args": [{"property": "cmip6:frequency"}, "mon"],
+                    "op": "=",
+                },
+                {
+                    "args": [{"property": "cmip6:variable_units"}, "W m-2"],
+                    "op": "=",
+                },
+                {
+                    "args": [{"property": "cmip6:member_id"}, "r19i2p2f1"],
+                    "op": "=",
+                },
             ],
         },
     ).pages_as_dicts()
-    first_page = next(search_pages)
+    try:
+        first_page = next(search_pages)
+    except StopIteration as exc:
+        raise EmptyResultError from exc
 
     expected_pages = int(first_page["numberMatched"] / first_page["numberReturned"])
     actual_pages = sum(1 for _ in search_pages)
@@ -79,7 +107,6 @@ def test_pagination(endpoint_url: str) -> None:
     assert actual_pages == expected_pages
 
 
-@pytest.mark.xfail(reason="CMIP6 STAC extension used is not public")
 def test_validate_catalog(endpoint_url: str) -> None:
     """Validate the STAC catalog for the endpoint against the STAC spec."""
     pystac_client.Client.open(endpoint_url).validate_all()
@@ -99,7 +126,7 @@ def test_endpoint_uses_published_cmip6_extension(endpoint_url: str) -> None:
     published_schema_url = "https://stac-extensions.github.io/cmip6/v2.0.0/schema.json"
 
     client = pystac_client.Client.open(endpoint_url)
-    response = client.search(collections="CMIP6", max_items=1)
+    response = client.search(collections=TEST_COLLECTION, max_items=1)
     extensions = response.item_collection_as_dict()["features"][0]["stac_extensions"]
 
     if published_schema_url in extensions:
@@ -107,11 +134,9 @@ def test_endpoint_uses_published_cmip6_extension(endpoint_url: str) -> None:
 
     published_schema = requests.get(published_schema_url).json()
 
-    cmip6_extension = [url for url in extensions if "cmip6" in url]
+    cmip6_extension = [url for url in extensions if TEST_COLLECTION in url]
     assert cmip6_extension, "No CMIP6 STAC extension found."
-    assert (
-        len(cmip6_extension) == 1
-    ), f"Multiple possible cmip6 extensions found: {cmip6_extension}"
+    assert len(cmip6_extension) == 1, f"Multiple possible cmip6 extensions found: {cmip6_extension}"
     cmip6_url = cmip6_extension[0]
     cmip6_schema = requests.get(cmip6_url).json()
 
@@ -123,76 +148,56 @@ def test_collections(endpoint_url: str, supported_collections: list[str]) -> Non
     """Check for expected collections."""
     client = pystac_client.Client.open(endpoint_url)
     assert set(supported_collections).issubset(
-        [coll.id for coll in client.get_collections()],
+        [coll.title for coll in client.get_collections()],
     )
 
 
-def test_facet_counts(endpoint_url: str) -> None:
-    """Can we get facet counts.
+def test_aggregation_facet_frequency(endpoint_url: str) -> None:
+    """Check that we can return counts of facets.
 
     Note
     ----
-    I don't think that pystac does aggregations so we will use search and then
-    hack the url. This tests is a placeholder and needs improved as the
-    capability grows.
+    I don't think that pystac does aggregations natively, so we will form a post
+    request manually instead.
     """
-    client = pystac_client.Client.open(endpoint_url)
-    results = client.search(
-        collections=["CMIP6"],
-        filter={
-            "args": [{"property": "properties.cmip6:activity_id"}, "ScenarioMIP"],
-            "op": "=",
+    response = requests.post(
+        f"{endpoint_url}/aggregate",
+        json={
+            "collections": [TEST_COLLECTION],
+            "filter_exp": {"args": [{"property": "cmip6:activity_id"}, "ScenarioMIP"], "op": "="},
+            "aggregations": ["cmip6_source_id_frequency", "cmip6_table_id_frequency"],
         },
     )
-    url = results.url_with_parameters()
-    url = url.replace(
-        "search?",
-        "aggregate?aggregations=cmip6_source_id_frequency,cmip6_table_id_frequency&",
-    )
-    response = requests.get(url)
     response.raise_for_status()
     content = response.json()
-    out = {
-        agg["name"]: [b["key"] for b in agg["buckets"]]
-        for agg in content["aggregations"]
-    }
+    out = {agg["name"]: [b["key"] for b in agg["buckets"]] for agg in content["aggregations"]}
     assert "cmip6_source_id_frequency" in out
     assert "cmip6_table_id_frequency" in out
     assert len(out["cmip6_source_id_frequency"]) > 0
     assert len(out["cmip6_table_id_frequency"]) > 0
 
 
-def test_node_counts(endpoint_url: str) -> None:
-    """Can we get facet counts.
+def test_aggregation_alt_name(endpoint_url: str) -> None:
+    """Check that we can get counts for `alternate_name_frequency`.
 
     Note
     ----
-    I don't think that pystac does aggregations so we will use search and then
-    hack the url. This tests is a placeholder and needs improved as the
-    capability grows.
+    I don't think that pystac does aggregations natively, so we will form a post
+    request manually instead.
     """
-    client = pystac_client.Client.open(endpoint_url)
-    results = client.search(
-        collections=["CMIP6"],
-        filter={
-            "args": [{"property": "properties.cmip6:activity_id"}, "ScenarioMIP"],
-            "op": "=",
+    response = requests.post(
+        f"{endpoint_url}/aggregate",
+        json={
+            "collections": [TEST_COLLECTION],
+            "filter_exp": {"args": [{"property": "cmip6:activity_id"}, "ScenarioMIP"], "op": "="},
+            "aggregations": ["alternate_name_frequency"],
         },
     )
-    url = results.url_with_parameters()
-    url = url.replace(
-        "search?",
-        "aggregate?aggregations=alternate_name_frequency&",
-    )
-    response = requests.get(url)
     response.raise_for_status()
     content = response.json()
-    out = {
-        agg["name"]: [b["key"] for b in agg["buckets"]]
-        for agg in content["aggregations"]
-    }
+    out = {agg["name"]: [b["key"] for b in agg["buckets"]] for agg in content["aggregations"]}
     assert "alternate_name_frequency" in out
-    assert "esgf-data.nersc.gov" in out["alternate_name_frequency"]
+    assert "eagle.alcf.anl.gov" in out["alternate_name_frequency"]
     assert len(out["alternate_name_frequency"]) > 0
 
 
@@ -205,7 +210,7 @@ def test_cmip6_collection_geospatial_extent(endpoint_url: str) -> None:
     """
     client = pystac_client.Client.open(endpoint_url)
 
-    cmip6_coll = client.get_collection("CMIP6")
+    cmip6_coll = client.get_collection(TEST_COLLECTION)
 
     cmip6_coll_extent = cmip6_coll.extent.to_dict()
 
@@ -227,7 +232,7 @@ def test_cmip6_temporal_by_datetime(endpoint_url: str) -> None:
     """
     client = pystac_client.Client.open(endpoint_url)
     item_search = client.search(
-        collections=["CMIP6"],
+        collections=[TEST_COLLECTION],
         datetime="1850-01-01/2015-01-01",
         max_items=1,
     )
@@ -239,7 +244,7 @@ def test_cmip6_temporal_by_query(endpoint_url: str) -> None:
     """Can we get results using a query (not recommended)."""
     client = pystac_client.Client.open(endpoint_url)
     item_search = client.search(
-        collections=["CMIP6"],
+        collections=[TEST_COLLECTION],
         query=["start_datetime>=1850-01-01", "end_datetime<=2015-01-01"],
         max_items=1,
     )
@@ -251,11 +256,8 @@ def test_cmip6_temporal_by_filter(endpoint_url: str) -> None:
     """Can we filter results using t_intersects."""
     client = pystac_client.Client.open(endpoint_url)
     item_search = client.search(
-        collections=["CMIP6"],
-        filter={
-            "op": "t_intersects",
-            "args": [{"property": "datetime"}, "1850-01-01/2015-01-01"],
-        },
+        collections=[TEST_COLLECTION],
+        filter={"op": "t_intersects", "args": [{"property": "datetime"}, {"interval": ["1850-01-01T00:00:00Z", "2015-01-01T00:00:00Z"]}]},
         max_items=1,
     )
     item = next(item_search.items())
@@ -267,11 +269,53 @@ def test_query_by_ids(endpoint_url: str) -> None:
     client = pystac_client.Client.open(endpoint_url)
     items = list(
         client.search(
-            collections=["CMIP6"],
+            collections=[TEST_COLLECTION],
             ids=[
-                "CMIP6.CMIP.MOHC.UKESM1-1-LL.piControl.r1i1p1f2.Omon.umo.gn.v20220505",
-                "CMIP6.DAMIP.CSIRO.ACCESS-ESM1-5.hist-GHG.r9i1p1f1.day.snw.gn.v20230705",
+                "CMIP6Test.ScenarioMIP.UCSB.E3SM-1-0.ssp370.r19i2p2f1.Amon.hfls.gr.v20250312",
+                "CMIP6Test.ScenarioMIP.UCSB.E3SM-1-0.ssp370.r19i2p2f1.Amon.clwvi.gr.v20250312",
             ],
         ).items_as_dicts(),
     )
     assert len(items) == 2
+
+
+def test_searching_with_filters_from_first(
+    endpoint_url: str,
+) -> None:
+    """Create a filter from the first results and the verify we can search for it."""
+
+    def _create_filter(endpoint_url: str):
+        client = pystac_client.Client.open(endpoint_url)
+        try:
+            page = next(
+                iter(
+                    client.search(
+                        collections=TEST_COLLECTION,
+                        max_items=1,
+                    ).pages_as_dicts(),
+                ),
+            )
+        except StopIteration as exc:
+            raise EmptyResultError from exc
+        properties = page["features"][0]["properties"]
+        return {
+            "op": "and",
+            "args": [
+                {"args": [{"property": "cmip6:variable_id"}, properties["cmip6:variable_id"]], "op": "="},
+                {"args": [{"property": "cmip6:source_id"}, properties["cmip6:source_id"]], "op": "="},
+            ],
+        }
+
+    client = pystac_client.Client.open(endpoint_url)
+    try:
+        page = next(
+            iter(
+                client.search(
+                    collections=TEST_COLLECTION,
+                    filter=_create_filter(endpoint_url),
+                ).pages_as_dicts(),
+            ),
+        )
+    except StopIteration as exc:
+        raise EmptyResultError from exc
+    assert page["numberMatched"] > 0
