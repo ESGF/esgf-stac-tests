@@ -282,40 +282,41 @@ def test_query_by_ids(endpoint_url: str) -> None:
 def test_searching_with_filters_from_first(
     endpoint_url: str,
 ) -> None:
-    """Create a filter from the first results and the verify we can search for it."""
+    """Create a filter from the first results from each collection and verify we can search for it."""
 
-    def _create_filter(endpoint_url: str):
+    def _get_first_item(endpoint_url: str, collection: str) -> str:
         client = pystac_client.Client.open(endpoint_url)
         try:
             page = next(
                 iter(
                     client.search(
-                        collections=TEST_COLLECTION,
+                        collections=collection,
                         max_items=1,
                     ).pages_as_dicts(),
                 ),
             )
         except StopIteration as exc:
             raise EmptyResultError from exc
-        properties = page["features"][0]["properties"]
-        return {
-            "op": "and",
-            "args": [
-                {"args": [{"property": "cmip6:variable_id"}, properties["cmip6:variable_id"]], "op": "="},
-                {"args": [{"property": "cmip6:source_id"}, properties["cmip6:source_id"]], "op": "="},
-            ],
-        }
+        return str(page["features"][0]["id"])
 
     client = pystac_client.Client.open(endpoint_url)
-    try:
-        page = next(
-            iter(
-                client.search(
-                    collections=TEST_COLLECTION,
-                    filter=_create_filter(endpoint_url),
-                ).pages_as_dicts(),
-            ),
-        )
-    except StopIteration as exc:
-        raise EmptyResultError from exc
-    assert page["numberMatched"] > 0
+    for col in client.get_all_collections():
+        # Is there an item published for this collection?
+        try:
+            item_id = _get_first_item(endpoint_url, str(col))
+        except EmptyResultError:
+            continue
+        # Now can we search for it?
+        try:
+            page = next(
+                iter(
+                    client.search(
+                        collections=str(col),
+                        id=item_id,
+                    ).pages_as_dicts(),
+                ),
+            )
+        except StopIteration as exc:
+            raise EmptyResultError from exc
+        if page["numberMatched"] != 1:
+            raise ValueError(f"{col=} {page['numberMatched']=} != 1")
