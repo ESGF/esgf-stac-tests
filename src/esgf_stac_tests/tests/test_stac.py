@@ -145,8 +145,8 @@ def test_endpoint_uses_published_cmip6_extension(endpoint_url: str) -> None:
 def test_collections(endpoint_url: str, supported_collections: list[str]) -> None:
     """Check for expected collections."""
     client = pystac_client.Client.open(endpoint_url)
-    assert set(supported_collections).issubset(
-        [coll.title for coll in client.get_collections()],
+    assert {c.lower() for c in supported_collections}.issubset(
+        [coll.id.lower() for coll in client.get_collections()],
     )
 
 
