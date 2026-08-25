@@ -250,6 +250,7 @@ def test_cmip6_temporal_by_query(endpoint_url: str) -> None:
     assert item
 
 
+@pytest.mark.skip("STAC does not yet implement")
 def test_cmip6_temporal_by_filter(endpoint_url: str) -> None:
     """Can we filter results using t_intersects."""
     client = pystac_client.Client.open(endpoint_url)
