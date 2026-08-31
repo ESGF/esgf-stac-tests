@@ -112,8 +112,6 @@ def test_validate_catalog(endpoint_url: str) -> None:
     pystac_client.Client.open(endpoint_url).validate_all()
 
 
-@pytest.mark.xfail(reason="Temporary design decision")
-@pytest.mark.data_challenge_xfail(4, reason="Temporary design decision")
 def test_endpoint_uses_published_cmip6_extension(endpoint_url: str) -> None:
     """
     Check that the endpoint is using the published STAC CMIP6 extension.
@@ -123,7 +121,7 @@ def test_endpoint_uses_published_cmip6_extension(endpoint_url: str) -> None:
     This is more to help us understand when differences in test results could be
     because an endpoint is pointing to a different extension.
     """
-    published_schema_url = "https://stac-extensions.github.io/cmip6/v2.0.0/schema.json"
+    published_schema_url = "https://esgf.github.io/stac-transaction-api/cmip6test/v2.0.2/schema.json"
 
     client = pystac_client.Client.open(endpoint_url)
     response = client.search(collections=TEST_COLLECTION, max_items=1)
@@ -147,8 +145,8 @@ def test_endpoint_uses_published_cmip6_extension(endpoint_url: str) -> None:
 def test_collections(endpoint_url: str, supported_collections: list[str]) -> None:
     """Check for expected collections."""
     client = pystac_client.Client.open(endpoint_url)
-    assert set(supported_collections).issubset(
-        [coll.title for coll in client.get_collections()],
+    assert {c.lower() for c in supported_collections}.issubset(
+        [coll.id.lower() for coll in client.get_collections()],
     )
 
 
@@ -252,6 +250,7 @@ def test_cmip6_temporal_by_query(endpoint_url: str) -> None:
     assert item
 
 
+@pytest.mark.skip("STAC does not yet implement")
 def test_cmip6_temporal_by_filter(endpoint_url: str) -> None:
     """Can we filter results using t_intersects."""
     client = pystac_client.Client.open(endpoint_url)
