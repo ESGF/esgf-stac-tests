@@ -6,10 +6,7 @@ This file defines pytest fixtures and hooks to support testing against multiple 
 
 import pytest
 
-DEFAULT_STAC_ENDPOINTS: list[str] = [
-    "https://api.stac.esgf.ceda.ac.uk",
-    "https://data-challenge-04-discovery.api.stac.esgf-west.org",
-]
+DEFAULT_STAC_ENDPOINTS: list[str] = ["https://search-int.east.esgf.io/", "https://search-int.west.esgf.io/"]
 
 
 def pytest_addoption(parser: pytest.Parser) -> None:
@@ -30,14 +27,20 @@ def pytest_addoption(parser: pytest.Parser) -> None:
         action="store",
         default=0,
         type=int,
-        help="Run tests with expectations for a specific Data Challenge (0-4).",
+        help="Run tests with expectations for a specific Data Challenge (1).",
     )
 
 
 def pytest_configure(config: pytest.Config) -> None:
     """Register custom markers and import Data Challenge specific plugins."""
-    config.addinivalue_line("markers", "data_challenge(id): mark test as specific to a particular Data Challenge.")
-    config.addinivalue_line("markers", "data_challenge_xfail(id): mark test as expected to fail for a particular Data Challenge.")
+    config.addinivalue_line(
+        "markers",
+        "data_challenge(id): mark test as specific to a particular Data Challenge.",
+    )
+    config.addinivalue_line(
+        "markers",
+        "data_challenge_xfail(id): mark test as expected to fail for a particular Data Challenge.",
+    )
     config.addinivalue_line(
         "markers",
         "needed_for(client): mark test as validating functionality needed for a specific client (metagrid, esmvaltool, etc).",
